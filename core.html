@@ -4,134 +4,189 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>URL Shortener</title>
+    <title>URL Shortener with SHA-256</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #f4f7f6;
-            flex-direction: column;
-        }
-
-        .container {
-            text-align: center;
-            background-color: #ffffff;
-            border-radius: 8px;
-            padding: 30px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            width: 100%;
-            max-width: 400px;
+            padding: 20px;
+            background-color: #f4f4f4;
         }
 
         h1 {
+            text-align: center;
             color: #333;
         }
 
-        input[type="text"] {
-            width: 80%;
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .input-section {
+            margin-bottom: 20px;
+        }
+
+        .input-section input {
+            width: 100%;
             padding: 10px;
-            margin: 10px 0;
+            font-size: 16px;
             border: 1px solid #ccc;
-            border-radius: 4px;
-            font-size: 16px;
+            border-radius: 5px;
         }
 
-        button {
+        .input-section button {
             padding: 10px 20px;
-            font-size: 16px;
-            color: #fff;
-            background-color: #007bff;
+            background-color: #5cb85c;
             border: none;
-            border-radius: 4px;
+            color: white;
+            font-size: 16px;
             cursor: pointer;
+            border-radius: 5px;
         }
 
-        button:hover {
-            background-color: #0056b3;
+        .input-section button:hover {
+            background-color: #4cae4c;
         }
 
-        .shortened-url {
+        .result {
+            text-align: center;
             margin-top: 20px;
-            background-color: #e9ecef;
-            padding: 15px;
-            border-radius: 4px;
-            word-wrap: break-word;
-            max-width: 100%;
             font-size: 16px;
         }
 
-        .shortened-url a {
+        .result a {
             color: #007bff;
             text-decoration: none;
         }
 
-        .shortened-url a:hover {
+        .result a:hover {
             text-decoration: underline;
         }
 
-        .error {
-            color: red;
-            margin-top: 20px;
+        .divider {
+            margin: 30px 0;
+            text-align: center;
+            font-size: 18px;
+            color: #888;
         }
-
     </style>
 </head>
 
 <body>
-
     <div class="container">
-        <h1>URL Shortener</h1>
-        <input type="text" id="urlInput" placeholder="Enter URL here" required>
-        <button onclick="shortenURL()">Shorten URL</button>
+        <h1>URL Shortener with SHA-256</h1>
 
-        <div class="shortened-url" id="shortenedURL" style="display:none;">
-            <p>Shortened URL:</p>
-            <a href="#" id="shortenedLink" target="_blank"></a>
+        <!-- URL to Hash Section -->
+        <div class="input-section">
+            <label for="longUrl">Enter a Long URL:</label>
+            <input type="text" id="longUrl" placeholder="Enter long URL to shorten" />
+            <button onclick="generateHash()">Generate Hash</button>
         </div>
 
-        <div id="errorMessage" class="error" style="display:none;">
-            Please enter a valid URL.
+        <div class="result" id="shortenedResult"></div>
+
+        <div class="divider">OR</div>
+
+        <!-- Hash to URL Section -->
+        <div class="input-section">
+            <label for="shortenedHash">Enter Hash to Retrieve URL:</label>
+            <input type="text" id="shortenedHash" placeholder="Enter shortened hash" />
+            <button onclick="retrieveUrl()">Retrieve URL</button>
         </div>
+
+        <div class="result" id="urlResult"></div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/crypto-js@3.1.9-1/crypto-js.js"></script>
     <script>
-        function shortenURL() {
-            // Get the input URL
-            const url = document.getElementById('urlInput').value.trim();
+        // In-memory storage for demo purposes (hash to URL map)
+        const hashToUrlMap = {};
 
-            // Check if the URL is not empty
-            if (url === "") {
-                document.getElementById('errorMessage').style.display = "block";
-                document.getElementById('shortenedURL').style.display = "none";
+        // Function to generate SHA-256 hash
+        async function generateHash() {
+            const longUrl = document.getElementById("longUrl").value.trim();
+            if (!longUrl) {
+                alert("Please enter a URL to shorten.");
                 return;
             }
 
-            // Clear error message
-            document.getElementById('errorMessage').style.display = "none";
+            // Convert the URL to a byte array (TextEncoder is used here)
+            const encoder = new TextEncoder();
+            const data = encoder.encode(longUrl);
 
-            // Generate MD5 hash of the URL
-            const md5Hash = CryptoJS.MD5(url).toString(CryptoJS.enc.Base64);
+            // Generate SHA-256 hash using Web Crypto API
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
 
-            // Take the first 8 characters of the hash (for a shorter shortened URL)
-            const shortened = md5Hash.substring(0, 8);
+            // Convert the ArrayBuffer to a hex string
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            const hashHex = hashArray.map(byte => byte.toString(16).padStart(2, '0')).join('');
 
-            // Construct the shortened URL (using a base domain as example)
-            const baseDomain = window.location.origin + "/#"; // Here, the page itself is the base
+            // Take the first 8 characters of the hash to simulate shortening
+            const shortHash = hashHex.substring(0, 8);
 
-            // Update the display
-            const shortenedURL = baseDomain + shortened;
+            // Store the URL with its hash
+            hashToUrlMap[shortHash] = longUrl;
 
-            document.getElementById('shortenedURL').style.display = "block";
-            document.getElementById('shortenedLink').href = shortenedURL;
-            document.getElementById('shortenedLink').textContent = shortenedURL;
+            // Display the shortened hash and automatically copy it to clipboard
+            document.getElementById("shortenedResult").innerHTML = `
+                <p><strong>Shortened URL Hash:</strong> <code>${shortHash}</code></p>
+                <p>Copy the hash and paste it in the second section to retrieve the original URL.</p>
+            `;
+            
+            // Automatically copy the hash to clipboard
+            copyToClipboard(shortHash);
         }
-    </script>
 
+        // Function to copy text to clipboard
+        function copyToClipboard(text) {
+            const textarea = document.createElement("textarea");
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            alert("Hash copied to clipboard!");
+        }
+
+        // Function to retrieve the original URL from hash
+        function retrieveUrl() {
+            const hash = document.getElementById("shortenedHash").value.trim();
+            if (!hash) {
+                alert("Please enter a hash to retrieve the URL.");
+                return;
+            }
+
+            // Check if the hash exists in our map
+            const originalUrl = hashToUrlMap[hash];
+            if (originalUrl) {
+                document.getElementById("urlResult").innerHTML = `
+                    <p><strong>Original URL:</strong> <a href="${originalUrl}" target="_blank">${originalUrl}</a></p>
+                `;
+            } else {
+                document.getElementById("urlResult").innerHTML = `
+                    <p><strong>Error:</strong> No URL found for this hash.</p>
+                `;
+            }
+        }
+
+        // Function to check the URL hash and redirect automatically
+        window.onload = function() {
+            const hash = window.location.hash.substring(1); // Get the part after '#'
+            if (hash) {
+                // Try to retrieve the URL based on the hash
+                const originalUrl = hashToUrlMap[hash];
+                if (originalUrl) {
+                    // If the URL is found, redirect the user
+                    window.location.href = originalUrl;
+                } else {
+                    alert("No URL found for this hash.");
+                }
+            }
+        };
+    </script>
 </body>
 
 </html>
