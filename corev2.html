@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL Shortener with SHA-256</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .input-section {
+            margin-bottom: 20px;
+        }
+
+        .input-section input {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        .input-section button {
+            padding: 10px 20px;
+            background-color: #5cb85c;
+            border: none;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        .input-section button:hover {
+            background-color: #4cae4c;
+        }
+
+        .result {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 16px;
+        }
+
+        .result a {
+            color: #007bff;
+            text-decoration: none;
+        }
+
+        .result a:hover {
+            text-decoration: underline;
+        }
+
+        .divider {
+            margin: 30px 0;
+            text-align: center;
+            font-size: 18px;
+            color: #888;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>URL Shortener with SHA-256</h1>
+
+        <!-- URL to Hash Section -->
+        <div class="input-section">
+            <label for="longUrl">Enter a Long URL:</label>
+            <input type="text" id="longUrl" placeholder="Enter long URL to shorten" />
+            <button onclick="generateHash()">Generate Hash</button>
+        </div>
+
+        <div class="result" id="shortenedResult"></div>
+
+        <div class="divider">OR</div>
+
+        <!-- Hash to URL Section -->
+        <div class="input-section">
+            <label for="shortenedHash">Enter Hash to Retrieve URL:</label>
+            <input type="text" id="shortenedHash" placeholder="Enter shortened hash" />
+            <button onclick="retrieveUrl()">Retrieve URL</button>
+        </div>
+
+        <div class="result" id="urlResult"></div>
+    </div>
+
+    <script>
+        // In-memory storage for demo purposes (hash to URL map)
+        const hashToUrlMap = {};
+
+        // Function to generate SHA-256 hash
+        async function generateHash() {
+            const longUrl = document.getElementById("longUrl").value.trim();
+            if (!longUrl) {
+                alert("Please enter a URL to shorten.");
+                return;
+            }
+
+            // Convert the URL to a byte array (TextEncoder is used here)
+            const encoder = new TextEncoder();
+            const data = encoder.encode(longUrl);
+
+            // Generate SHA-256 hash using Web Crypto API
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+
+            // Convert the ArrayBuffer to a hex string
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            const hashHex = hashArray.map(byte => byte.toString(16).padStart(2, '0')).join('');
+
+            // Take the first 8 characters of the hash to simulate shortening
+            const shortHash = hashHex.substring(0, 8);
+
+            // Store the URL with its hash
+            hashToUrlMap[shortHash] = longUrl;
+
+            console.log('Generated Hash:', shortHash); // Debugging log
+            console.log('Hash Map:', hashToUrlMap);    // Debugging log
+
+            // Display the shortened hash and automatically copy it to clipboard
+            document.getElementById("shortenedResult").innerHTML = `
+                <p><strong>Shortened URL Hash:</strong> <code>${shortHash}</code></p>
+                <p>Copy the hash and paste it in the second section to retrieve the original URL.</p>
+            `;
+            
+            // Automatically copy the hash to clipboard
+            copyToClipboard(shortHash);
+        }
+
+        // Function to copy text to clipboard
+        function copyToClipboard(text) {
+            const textarea = document.createElement("textarea");
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            alert("Hash copied to clipboard!");
+        }
+
+        // Function to retrieve the original URL from hash
+        function retrieveUrl() {
+            const hash = document.getElementById("shortenedHash").value.trim();
+            if (!hash) {
+                alert("Please enter a hash to retrieve the URL.");
+                return;
+            }
+
+            // Check if the hash exists in our map
+            const originalUrl = hashToUrlMap[hash];
+            if (originalUrl) {
+                document.getElementById("urlResult").innerHTML = `
+                    <p><strong>Original URL:</strong> <a href="${originalUrl}" target="_blank">${originalUrl}</a></p>
+                `;
+            } else {
+                document.getElementById("urlResult").innerHTML = `
+                    <p><strong>Error:</strong> No URL found for this hash.</p>
+                `;
+            }
+        }
+
+        // Function to check the URL hash and redirect automatically
+        window.onload = function() {
+            const hash = window.location.hash.substring(1); // Get the part after '#'
+            console.log('URL Hash:', hash);  // Debugging log
+            
+            if (hash) {
+                // Try to retrieve the URL based on the hash
+                const originalUrl = hashToUrlMap[hash];
+                console.log('Original URL found for hash:', originalUrl); // Debugging log
+                
+                if (originalUrl) {
+                    // If the URL is found, redirect the user
+                    window.location.href = originalUrl;
+                } else {
+                    alert("No URL found for this hash.");
+                }
+            }
+        };
+    </script>
+</body>
+
+</html>
